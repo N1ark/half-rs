@@ -26,9 +26,10 @@ pub(crate) const fn f32_to_bf16(value: f32) -> u16 {
 pub(crate) const fn f64_to_bf16(value: f64) -> u16 {
     // TODO: Replace transmute with to_bits() once to_bits is const-stabilized
     // Convert to raw bytes, truncating the last 32-bits of mantissa; that precision will always
-    // be lost on half-precision.
+    // be lost on half-precision. They can still decide the rounding, so keep a sticky bit for them
+    // in the lowest bit, which is always below the rounding bit.
     let val: u64 = transmute!(value);
-    let x = (val >> 32) as u32;
+    let x = (val >> 32) as u32 | (val as u32 != 0) as u32;
 
     // Extract IEEE754 components
     let sign = x & 0x8000_0000u32;

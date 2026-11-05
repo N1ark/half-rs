@@ -101,7 +101,7 @@ pub(crate) fn f32_to_f16(f: f32) -> u16 {
 pub(crate) fn f64_to_f16(f: f64) -> u16 {
     convert_fn! {
         if x86_feature("f16c") {
-            unsafe { x86::f32_to_f16_x86_f16c(f as f32) }
+            unsafe { x86::f32_to_f16_x86_f16c(f64_to_f32_round_to_odd(f)) }
         } else if aarch64_feature("fp16") {
             unsafe { aarch64::f64_to_f16_fp16(f) }
         } else if loongarch64_feature("lsx") {
@@ -613,13 +613,31 @@ pub(crate) const fn f32_to_f16_fallback(value: f32) -> u16 {
     }
 }
 
+/// Converts an `f64` to `f32`, rounding to odd: if the conversion is inexact, the result is
+/// whichever of the two neighbouring `f32` values has an odd mantissa. Rounding the result to `f16`
+/// (round to nearest, ties to even) then gives the same result as rounding `f` to `f16` directly,
+/// as `f32` has at least two more bits of precision than `f16`. Converting with `f as f32` instead
+/// rounds twice, and a value just above a tie can end up exactly on the tie and then round down.
+#[inline]
+fn f64_to_f32_round_to_odd(f: f64) -> f32 {
+    // The low 29 mantissa bits are those `f32` does not have; fold them into a sticky bit set in
+    // the lowest `f32` mantissa bit. The cast is then exact when the result is in the normal range
+    // of `f32`. Outside of it, the result is either infinite or so small that it rounds to zero as
+    // `f16` anyway, so the cast does not change the `f16` result.
+    const LOW_BITS: u64 = (1 << 29) - 1;
+    let bits = f.to_bits();
+    let sticky = ((bits & LOW_BITS != 0) as u64) << 29;
+    f64::from_bits((bits & !LOW_BITS) | sticky) as f32
+}
+
 #[inline]
 pub(crate) const fn f64_to_f16_fallback(value: f64) -> u16 {
     // Convert to raw bytes, truncating the last 32-bits of mantissa; that precision will always
-    // be lost on half-precision.
+    // be lost on half-precision. They can still decide the rounding, so keep a sticky bit for them
+    // in the lowest bit, which is always below the rounding bit.
     // TODO: Replace mem::transmute with to_bits() once to_bits is const-stabilized
     let val: u64 = unsafe { mem::transmute::<f64, u64>(value) };
-    let x = (val >> 32) as u32;
+    let x = (val >> 32) as u32 | (val as u32 != 0) as u32;
 
     // Extract IEEE754 components
     let sign = x & 0x8000_0000u32;

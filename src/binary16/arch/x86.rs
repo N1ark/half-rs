@@ -15,7 +15,7 @@ use core::arch::x86_64::{
 #[cfg(target_arch = "x86")]
 use core::arch::x86::_mm_cvtps_ph;
 
-use super::convert_chunked_slice_8;
+use super::{convert_chunked_slice_8, f64_to_f32_round_to_odd};
 
 /////////////// x86/x86_64 f16c ////////////////
 
@@ -69,9 +69,14 @@ pub(super) unsafe fn f16x4_to_f64x4_x86_f16c(v: &[u16; 4]) -> [f64; 4] {
 #[target_feature(enable = "f16c")]
 #[inline]
 pub(super) unsafe fn f64x4_to_f16x4_x86_f16c(v: &[f64; 4]) -> [u16; 4] {
-    // Let compiler vectorize this regular cast for now.
+    // Let compiler vectorize this conversion for now. Round to odd to avoid double rounding.
     // TODO: investigate auto-detecting sse2/avx convert features
-    let v = [v[0] as f32, v[1] as f32, v[2] as f32, v[3] as f32];
+    let v = [
+        f64_to_f32_round_to_odd(v[0]),
+        f64_to_f32_round_to_odd(v[1]),
+        f64_to_f32_round_to_odd(v[2]),
+        f64_to_f32_round_to_odd(v[3]),
+    ];
     f32x4_to_f16x4_x86_f16c(&v)
 }
 
@@ -111,17 +116,17 @@ pub(super) unsafe fn f16x8_to_f64x8_x86_f16c(v: &[u16; 8]) -> [f64; 8] {
 #[target_feature(enable = "f16c")]
 #[inline]
 pub(super) unsafe fn f64x8_to_f16x8_x86_f16c(v: &[f64; 8]) -> [u16; 8] {
-    // Let compiler vectorize this regular cast for now.
+    // Let compiler vectorize this conversion for now. Round to odd to avoid double rounding.
     // TODO: investigate auto-detecting sse2/avx convert features
     let v = [
-        v[0] as f32,
-        v[1] as f32,
-        v[2] as f32,
-        v[3] as f32,
-        v[4] as f32,
-        v[5] as f32,
-        v[6] as f32,
-        v[7] as f32,
+        f64_to_f32_round_to_odd(v[0]),
+        f64_to_f32_round_to_odd(v[1]),
+        f64_to_f32_round_to_odd(v[2]),
+        f64_to_f32_round_to_odd(v[3]),
+        f64_to_f32_round_to_odd(v[4]),
+        f64_to_f32_round_to_odd(v[5]),
+        f64_to_f32_round_to_odd(v[6]),
+        f64_to_f32_round_to_odd(v[7]),
     ];
     f32x8_to_f16x8_x86_f16c(&v)
 }

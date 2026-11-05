@@ -730,6 +730,22 @@ mod test {
     }
 
     #[test]
+    fn slice_convert_f16_f64_above_tie() {
+        // 1.0 + 2^-11 is the tie between 1.0 and the next value 1.0 + 2^-10; anything above it
+        // must round up, also when the excess is only in the low bits of the f64 mantissa
+        let x = 1.0 + (-11f64).exp2() + (-40f64).exp2();
+        let expected = f16::from_bits(0x3C01);
+
+        // Exact chunks, partial chunks and remainder
+        for len in [8, 9, 4, 2] {
+            let vf64 = [x; 9];
+            let mut buf16 = [f16::ZERO; 9];
+            buf16[..len].convert_from_f64_slice(&vf64[..len]);
+            assert_eq!(&buf16[..len], &[expected; 9][..len]);
+        }
+    }
+
+    #[test]
     fn slice_convert_bf16_f64() {
         // Exact chunks
         let vf64 = [1., 2., 3., 4., 5., 6., 7., 8.];

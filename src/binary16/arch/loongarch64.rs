@@ -1,5 +1,7 @@
 use core::{mem::MaybeUninit, ptr};
 
+use super::f64_to_f32_round_to_odd;
+
 #[cfg(target_arch = "loongarch64")]
 use core::arch::loongarch64::{lsx_vfcvt_h_s, lsx_vfcvtl_s_h, m128, m128i};
 
@@ -57,7 +59,12 @@ pub(super) unsafe fn f16x4_to_f64x4_lsx(v: &[u16; 4]) -> [f64; 4] {
 #[target_feature(enable = "lsx")]
 #[inline]
 pub(super) unsafe fn f64x4_to_f16x4_lsx(v: &[f64; 4]) -> [u16; 4] {
-    // Let compiler vectorize this regular cast for now.
-    let v = [v[0] as f32, v[1] as f32, v[2] as f32, v[3] as f32];
+    // Let compiler vectorize this conversion for now. Round to odd to avoid double rounding.
+    let v = [
+        f64_to_f32_round_to_odd(v[0]),
+        f64_to_f32_round_to_odd(v[1]),
+        f64_to_f32_round_to_odd(v[2]),
+        f64_to_f32_round_to_odd(v[3]),
+    ];
     f32x4_to_f16x4_lsx(&v)
 }

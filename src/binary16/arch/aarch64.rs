@@ -109,8 +109,9 @@ pub(super) unsafe fn f64x4_to_f16x4_fp16(v: &[f64; 4]) -> [u16; 4] {
     ptr::copy_nonoverlapping(v[2..].as_ptr(), high.as_mut_ptr().cast(), 2);
     let result: uint16x4_t;
     asm!(
-        "fcvtn {1:v}.2s, {2:v}.2d", // Convert low to f32
-        "fcvtn2 {1:v}.4s, {3:v}.2d", // Convert high to f32
+        // Convert to f32 rounding to odd, so that the conversion to f16 does not round twice
+        "fcvtxn {1:v}.2s, {2:v}.2d", // Convert low to f32
+        "fcvtxn2 {1:v}.4s, {3:v}.2d", // Convert high to f32
         "fcvtn {0:v}.4h, {1:v}.4s", // Convert to f16
         lateout(vreg) result,
         out(vreg) _,

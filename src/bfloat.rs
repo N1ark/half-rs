@@ -1835,6 +1835,31 @@ mod test {
         );
     }
 
+    #[test]
+    fn round_to_nearest_f64_above_tie() {
+        // Values just above a tie, where only the low 32 bits of the f64 mantissa put them above
+        // the tie. They must round up, not to even.
+        let above = (-40f64).exp2();
+
+        // 1.0 + 2^-8 is the tie between 1.0 and the next value 1.0 + 2^-7
+        let x = 1.0 + (-8f64).exp2() + above;
+        assert_eq!(bf16::from_f64(x).to_bits(), 0x3F81);
+        assert_eq!(bf16::from_f64_const(x).to_bits(), 0x3F81);
+        assert_eq!(bf16::from_f64(-x).to_bits(), 0xBF81);
+
+        // 2^-134 is the tie between 0.0 and the smallest subnormal 2^-133
+        let x = (-134f64).exp2() * (1.0 + above);
+        assert_eq!(bf16::from_f64(x).to_bits(), 0x0001);
+
+        // (2 - 2^-8) * 2^127 is the tie between bf16::MAX and infinity
+        let x = (2.0 - (-8f64).exp2()) * 127f64.exp2() * (1.0 + above);
+        assert_eq!(bf16::from_f64(x).to_bits(), 0x7F80);
+
+        // Values that are exactly representable as `f32` are affected too
+        let x = f32::from_bits(0x3F80_8001) as f64; // 1 + 2^-8 + 2^-23
+        assert_eq!(bf16::from_f64(x).to_bits(), 0x3F81);
+    }
+
     #[cfg(feature = "std")]
     #[test]
     fn formatting() {

@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Conversions from `f64` to `f16` and `bf16` (`from_f64`, `from_f64_const`, slice conversions)
+  could round a value just above a rounding tie down instead of up, giving a result off by one
+  ULP. This affected the software implementation, which ignored the low 32 bits of the `f64`
+  mantissa, and the x86 `f16c` and aarch64 `fp16` hardware intrinsic paths, which rounded twice
+  through `f32`. Fixes [#151] and [#116].
 
 ## [2.7.1] - 2025-10-13 <a name="2.7.1"></a>
 ### Fixed
@@ -388,6 +394,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#107]: https://github.com/starkat99/half-rs/issues/107
 [#110]: https://github.com/starkat99/half-rs/issues/110
 [#126]: https://github.com/starkat99/half-rs/issues/126
+[#116]: https://github.com/starkat99/half-rs/issues/116
+[#151]: https://github.com/starkat99/half-rs/issues/151
 
 [@tspiteri]: https://github.com/tspiteri
 [@PSeitz]: https://github.com/PSeitz
